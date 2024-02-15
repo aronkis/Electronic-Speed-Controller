@@ -1,7 +1,7 @@
 #ifndef _SEQUENCE_STEP_H_
 #define _SEQUENCE_STEP_H_
 
-#define RISING  ((1 << ACIS0) | (1 << ACIS1)) 
+#define RISING  ((1 << ACIS0) | (1 << ACIS1))
 #define FALLING (~(1 << ACIS0))
 
 #define ADC_PIN_B 0
@@ -34,22 +34,22 @@ void CH_BL();
 
 void set_up_comparator()
 {
-	ADCSRA = (0 << ADEN);     // Disable the ADC module
-  ADCSRB = (1 << ACME);     // Enable MUX select for negative input of comparator
+  ADCSRA = (0 << ADEN); // Disable the ADC module
+  ADCSRB = (1 << ACME); // Enable MUX select for negative input of comparator
 }
 
 void BEMF_RISING(byte adc_pin)
 {
   set_up_comparator();
   ADMUX = adc_pin;
-  ACSR |= RISING;     // Set up interrupt on rising edge
+  ACSR |= RISING; // Set up interrupt on rising edge
 }
 
 void BEMF_FALLING(byte adc_pin)
 {
   set_up_comparator();
   ADMUX = adc_pin;
-  ACSR &= FALLING;    // Set interrupt on falling edge
+  ACSR &= FALLING; // Set interrupt on falling edge
 }
 
 #endif // _SEQUENCE_STEP_H_
