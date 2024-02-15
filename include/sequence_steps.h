@@ -1,5 +1,5 @@
-#ifndef _SEQUENCE_STEP_H_
-#define _SEQUENCE_STEP_H_
+#ifndef _SEQUENCE_STEPS_H_
+#define _SEQUENCE_STEPS_H_
 
 #define RISING  ((1 << ACIS0) | (1 << ACIS1))
 #define FALLING (~(1 << ACIS0))
@@ -18,34 +18,27 @@
 
 volatile byte current_highside = 0;
 
-// TODO: PWM control on High Side
-void AH_BL()
-{
-	PORTD &= ~PORTD;
-	PORTD |= B_LOW_PIN;
-	current_highside = A_HIGH_PIN;
-}
-
-void AH_CL();
-void BH_CL();
-void BH_AL();
-void CH_AL();
-void CH_BL();
-
 void set_up_comparator()
 {
 	ADCSRA = (0 << ADEN); // Disable the ADC module
 	ADCSRB = (1 << ACME); // Enable MUX select for negative input of comparator
 }
 
-void BEMF_RISING(byte adc_pin)
+void mostfet_state (byte high_side, byte low_side)
+{
+	PORTD &= ~PORTD;
+	PORTD |= low_side;
+	current_highside = high_side;
+}
+
+void bemf_rising(byte adc_pin)
 {
 	set_up_comparator();
 	ADMUX = adc_pin;
 	ACSR |= RISING; // Set up interrupt on rising edge
 }
 
-void BEMF_FALLING(byte adc_pin)
+void bemf_falling(byte adc_pin)
 {
 	set_up_comparator();
 	ADMUX = adc_pin;

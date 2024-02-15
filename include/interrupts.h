@@ -1,14 +1,17 @@
 #ifndef _INTERRUPTS_H_
 #define _INTERRUPTS_H_
 
-volatile byte last_PWM_state = 0;
+volatile byte last_PWM_state   = 0;
 volatile byte last_timer_state = 0; // 0 PIN ON, 1 PIN OFF
-byte sequence_step = 0;
+static   byte sequence_step    = 0;
 volatile int timer_overflow_counter = 0;
 volatile unsigned long PWM_INPUT = 1250;
 
 int pos = 0;
 
+void set_next_step(); 
+
+// Used to check the zero crossing (10 times eliminate noise)
 ISR(ANALOG_COMP_vect)
 {
 	byte count = 0;
@@ -26,6 +29,7 @@ ISR(ANALOG_COMP_vect)
 	sequence_step %= 6;
 }
 
+// Used to measure the PWM signal
 ISR(PCINT0_vect)
 {
 	if (last_PWM_state == 0)
@@ -43,11 +47,13 @@ ISR(PCINT0_vect)
 	}
 }
 
+// Used to count the number of overflows to count more then 255.
 ISR(TIMER2_OVF_vect)
 {
 	timer_overflow_counter++;
 }
-// TODO: Turning PINs ON and OFF
+
+// Used to toggle the output pins on the high side
 ISR(TIMER1_COMPA_vect)
 {
 	if (last_timer_state)
@@ -62,10 +68,10 @@ ISR(TIMER1_COMPA_vect)
 	}
 }
 
-// It is used to assure that we are in the right period
+// Used to assure that we are in the right period
 ISR(TIMER1_OVF_vect)
 {
 	last_timer_state = 1;
 }
 
-#endif
+#endif // _INTERRUPTS_H_
