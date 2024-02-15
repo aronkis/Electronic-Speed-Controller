@@ -21,9 +21,9 @@ volatile byte current_highside = 0;
 // TODO: PWM control on High Side
 void AH_BL()
 {
-  PORTD &= ~PORTD;
-  PORTD |= B_LOW_PIN;
-  current_highside = A_HIGH_PIN;
+	PORTD &= ~PORTD;
+	PORTD |= B_LOW_PIN;
+	current_highside = A_HIGH_PIN;
 }
 
 void AH_CL();
@@ -34,22 +34,22 @@ void CH_BL();
 
 void set_up_comparator()
 {
-  ADCSRA = (0 << ADEN); // Disable the ADC module
-  ADCSRB = (1 << ACME); // Enable MUX select for negative input of comparator
+	ADCSRA = (0 << ADEN); // Disable the ADC module
+	ADCSRB = (1 << ACME); // Enable MUX select for negative input of comparator
 }
 
 void BEMF_RISING(byte adc_pin)
 {
-  set_up_comparator();
-  ADMUX = adc_pin;
-  ACSR |= RISING; // Set up interrupt on rising edge
+	set_up_comparator();
+	ADMUX = adc_pin;
+	ACSR |= RISING; // Set up interrupt on rising edge
 }
 
 void BEMF_FALLING(byte adc_pin)
 {
-  set_up_comparator();
-  ADMUX = adc_pin;
-  ACSR &= FALLING; // Set interrupt on falling edge
+	set_up_comparator();
+	ADMUX = adc_pin;
+	ACSR &= FALLING; // Set interrupt on falling edge
 }
 
 #endif // _SEQUENCE_STEP_H_
