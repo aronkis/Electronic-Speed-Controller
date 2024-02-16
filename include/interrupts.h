@@ -1,15 +1,13 @@
 #ifndef _INTERRUPTS_H_
 #define _INTERRUPTS_H_
 
-volatile byte last_PWM_state   = 0;
-volatile byte last_timer_state = 0; // 0 PIN ON, 1 PIN OFF
-static   byte sequence_step    = 0;
-volatile int timer_overflow_counter = 0;
-volatile unsigned long PWM_INPUT = 1250;
+byte last_PWM_state   	  = 0, // 0 PWM low, 1 PWM high
+     last_timer_state     = 0; // 0 PIN ON, 1 PIN OFF
+static byte current_phase = 0;
+static int pwm_input = 1250;
+       int timer_overflow_counter = 0;
 
-int pos = 0;
-
-void set_next_step(); 
+void set_next_step();
 
 // Used to check the zero crossing (10 times eliminate noise)
 ISR(ANALOG_COMP_vect)
@@ -17,18 +15,20 @@ ISR(ANALOG_COMP_vect)
 	byte count = 0;
 	while (count < 10)
 	{
-		if (sequence_step & 1)
-			if (ACSR & (1 << ACO)) // ACO = 1 - On falling edge the AIN0 > AINx, this means ACO = 1
+		if (current_phase & 1)
+			if (ACSR & (1 << ACO))    // On falling edge the AIN0 > AINx, this means ACO = 1
 				count++;
-			else if (!(ACSR & (1 << ACO))) // ACO = 0 - On rising edge the AIN0 < AINx, this means ACO = 0
+		else 
+			if (!(ACSR & (1 << ACO))) // On rising edge the AIN0 < AINx, this means ACO = 0
 				count++;
 	}
 
 	set_next_step();
-	sequence_step++;
-	sequence_step %= 6;
+	current_phase++;
+	current_phase %= 6;
 }
 
+// TODO: Filter the PWM signal length
 // Used to measure the PWM signal
 ISR(PCINT0_vect)
 {
@@ -41,7 +41,7 @@ ISR(PCINT0_vect)
 	}
 	else if (last_PWM_state == 1)
 	{
-		PWM_INPUT = TCNT2 + (timer_overflow_counter * 255 / 16);
+		pwm_input = TCNT2 + (timer_overflow_counter * 255 / 16);
 		TCCR2B = 0;
 		last_PWM_state = 0;
 	}

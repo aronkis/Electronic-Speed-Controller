@@ -5,8 +5,11 @@
 #define PWM_MIN_VALUE 35
 #define PWM_MAX_VALUE 250
 
-volatile byte timer_value;
-
+byte timer_value,
+     motor_state = 0;
+int motor_off_counter = 0,
+    soft_starter_countdown = 0;
+	
 void setup()
 {
 	Serial.begin(115200);
@@ -39,13 +42,48 @@ void setup()
 
 void loop()
 {
-	//TODO : Implement a soft start
-	ACSR |= (1 << ACIE); // Enable the analog comparator interrupt
-	while (1)
+	//TODO : Measure the PWM starting point
+	if (pwm_input > (PWM_IN_MIN + 115))
 	{
-		PWM_INPUT   = constrain(PWM_INPUT, PWM_IN_MIN, PWM_IN_MAX);
-		timer_value = map(PWM_INPUT, PWM_IN_MIN, PWM_IN_MAX, \
-		                             PWM_MIN_VALUE, PWM_MAX_VALUE);
+		motor_off_counter = 0;
+		motor_state = 1;
+	}	
+
+	if (motor_state)
+	{
+		soft_starter_countdown = 2000;
+		timer_value = PWM_MIN_VALUE;
 		set_timer(timer_value);
+		
+		while (soft_starter_countdown > 500)
+		{
+			delayMicroseconds(soft_starter_countdown);
+			set_next_step();
+			current_phase++;
+			current_phase %= 6;
+			soft_starter_countdown -= 10;
+		}
+		
+		ACSR |= (1 << ACIE); // Enable the analog comparator interrupt
+		
+		while (motor_state)
+		{
+			pwm_input   = constrain(pwm_input, PWM_IN_MIN, PWM_IN_MAX);
+			timer_value = map(pwm_input, PWM_IN_MIN, PWM_IN_MAX, \
+										 PWM_MIN_VALUE, PWM_MAX_VALUE);
+			set_timer(timer_value);
+
+			if (pwm_input < (PWM_IN_MIN + 30))
+			{
+				if (motor_off_counter > 10000)
+				{
+					motor_state = 0;
+					motor_off_counter = 0;
+					PORTD &= ~PORTD;
+					TCCR1A = 0;
+				}
+				motor_off_counter++;
+			}
+		}
 	}
 }

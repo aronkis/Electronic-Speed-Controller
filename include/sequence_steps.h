@@ -2,7 +2,7 @@
 #define _SEQUENCE_STEPS_H_
 
 #define RISING  ((1 << ACIS0) | (1 << ACIS1))
-#define FALLING (~(1 << ACIS0))
+#define FALLING  (1 << ACIS1)
 
 #define ADC_PIN_B 0
 #define ADC_PIN_C 1
@@ -16,7 +16,7 @@
 #define B_LOW_PIN PD3
 #define C_LOW_PIN PD2
 
-volatile byte current_highside = 0;
+static byte current_highside = 0;
 
 void set_up_comparator()
 {
@@ -28,21 +28,15 @@ void mostfet_state (byte high_side, byte low_side)
 {
 	PORTD &= ~PORTD;
 	PORTD |= low_side;
-	current_highside = high_side;
+	current_highside = high_side; // Used tell which mosfet is switching
 }
 
-void bemf_rising(byte adc_pin)
+void bemf_sensing(byte adc_pin, byte bemf_direction)
 {
 	set_up_comparator();
 	ADMUX = adc_pin;
-	ACSR |= RISING; // Set up interrupt on rising edge
-}
-
-void bemf_falling(byte adc_pin)
-{
-	set_up_comparator();
-	ADMUX = adc_pin;
-	ACSR &= FALLING; // Set interrupt on falling edge
+	ACSR &= ~((1 << ACIS0) | (1 << ACIS1));
+	ACSR |= bemf_direction;
 }
 
 #endif // _SEQUENCE_STEP_H_
