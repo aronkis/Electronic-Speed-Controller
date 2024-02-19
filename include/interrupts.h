@@ -12,15 +12,37 @@ void set_next_step();
 // Used to check the zero crossing (10 times eliminate noise)
 ISR(ANALOG_COMP_vect)
 {
+	// byte count = 0;
+	// while (count < 5)
+	// {
+	// 	if (current_phase & 1)
+	// 	{
+	// 		if (((ACSR >> ACO) & 1))    // On falling edge the AIN0 > AINx, this means ACO = 1
+	// 			count++;
+	// 	}
+	// 	else
+	// 	{
+	// 		if (!((ACSR >> ACO) & 1)) // On rising edge the AIN0 < AINx, this means ACO = 0
+	// 			count++;
+	// 	} 
+	// }
+
 	byte count = 0;
-	while (count < 10)
+	while (count < 5)
 	{
 		if (current_phase & 1)
-			if (ACSR & (1 << ACO))    // On falling edge the AIN0 > AINx, this means ACO = 1
-				count++;
+		{
+			// On falling edge the AIN0 > AINx, this means ACO = 1
+			if (!((ACSR >> ACO) & 1))
+				count--;
+		}
 		else 
-			if (!(ACSR & (1 << ACO))) // On rising edge the AIN0 < AINx, this means ACO = 0
-				count++;
+		{
+			// On rising edge the AIN0 < AINx, this means ACO = 0
+			if (((ACSR >> ACO) & 1))
+				count--;
+		}
+		count++;
 	}
 
 	set_next_step();
@@ -63,7 +85,7 @@ ISR(TIMER1_COMPA_vect)
 	}
 	else
 	{
-		PORTB |= current_highside;
+		PORTB |= (1 << current_highside);
 		last_timer_state = 1;
 	}
 }

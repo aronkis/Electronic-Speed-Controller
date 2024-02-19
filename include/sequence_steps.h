@@ -27,16 +27,18 @@ void set_up_comparator()
 void mostfet_state (byte high_side, byte low_side)
 {
 	PORTD &= ~PORTD;
+	PORTB &= ~PORTB;
 	PORTD |= low_side;
 	current_highside = high_side; // Used tell which mosfet is switching
 }
 
 void bemf_sensing(byte adc_pin, byte bemf_direction)
 {
-	set_up_comparator();
 	ADMUX = adc_pin;
+	ACSR &= ~(1 << ACIE);
 	ACSR &= ~((1 << ACIS0) | (1 << ACIS1));
 	ACSR |= bemf_direction;
+	ACSR |= (1 << ACIE);
 }
 
 #endif // _SEQUENCE_STEP_H_
