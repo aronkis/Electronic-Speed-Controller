@@ -1,32 +1,27 @@
 #ifndef _INTERRUPTS_H_
 #define _INTERRUPTS_H_
 
+#define PWM_IN_MIN 1000
+#define PWM_IN_MAX 2000
+#define PWM_MIN_VALUE 35
+#define PWM_MAX_VALUE 250
+
 byte last_PWM_state   	  = 0, // 0 PWM low, 1 PWM high
-     last_timer_state     = 0; // 0 PIN ON, 1 PIN OFF
-static byte current_phase = 0;
-static int pwm_input = 1250;
-       int timer_overflow_counter = 0;
+     last_timer_state     = 0, // 0 PIN ON, 1 PIN OFF
+	 timer_value;
+int pwm_input = 0;
+unsigned long pwm_average = 0;
+int timer_overflow_counter = 0;
+volatile byte current_phase = 0;
+volatile byte current_highside = PB1;
+byte count = 0;
 
 void set_next_step();
+void set_timer(byte);
 
-// Used to check the zero crossing (10 times eliminate noise)
+// Used to check the zero crossing (5 times to eliminate noise)
 ISR(ANALOG_COMP_vect)
 {
-	// byte count = 0;
-	// while (count < 5)
-	// {
-	// 	if (current_phase & 1)
-	// 	{
-	// 		if (((ACSR >> ACO) & 1))    // On falling edge the AIN0 > AINx, this means ACO = 1
-	// 			count++;
-	// 	}
-	// 	else
-	// 	{
-	// 		if (!((ACSR >> ACO) & 1)) // On rising edge the AIN0 < AINx, this means ACO = 0
-	// 			count++;
-	// 	} 
-	// }
-
 	byte count = 0;
 	while (count < 5)
 	{
@@ -44,16 +39,17 @@ ISR(ANALOG_COMP_vect)
 		}
 		count++;
 	}
-
 	set_next_step();
 	current_phase++;
-	current_phase %= 6;
+	if (current_phase == 6)
+		current_phase = 0;
 }
 
 // TODO: Filter the PWM signal length
 // Used to measure the PWM signal
 ISR(PCINT0_vect)
 {
+	
 	if (last_PWM_state == 0)
 	{
 		last_PWM_state = 1;
@@ -64,6 +60,18 @@ ISR(PCINT0_vect)
 	else if (last_PWM_state == 1)
 	{
 		pwm_input = TCNT2 + (timer_overflow_counter * 255 / 16);
+		pwm_input = constrain(pwm_input, PWM_IN_MIN, PWM_IN_MAX);
+		pwm_average += pwm_input;
+		count++;
+		if (count == 10) //to filter the measured PWM value (?)
+		{
+			pwm_average /= 10;
+			timer_value = map(pwm_average, PWM_IN_MIN, PWM_IN_MAX, \
+									 	   PWM_MIN_VALUE, PWM_MAX_VALUE);
+			set_timer(timer_value);
+			count = 0;
+			pwm_average = 0;
+		}
 		TCCR2B = 0;
 		last_PWM_state = 0;
 	}
