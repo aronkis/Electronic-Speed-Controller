@@ -48,16 +48,16 @@ void set_up_ports()
 	DDRD  |= (1 << PD2) | (1 << PD3) | (1 << PD4); 
 	PORTD &= 0x00;								  
 	// Configure pins 1, 2 and 3 as outputs
-	DDRB  |= (1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4); 
+	DDRB  |= (1 << PB1) | (1 << PB2) | (1 << PB3); 
 	PORTB &= 0x00;		
 }
 
 void set_up_comparator()
 {
-	ACSR |= (1 << ACI);   // Clear the analog comparator interrupt
-	ACSR |= (1 << ACIE);  // Enable the analog comparator interrupt
 	ADCSRA = (0 << ADEN); // Disable the ADC module
 	ADCSRB = (1 << ACME); // Enable MUX select for negative input of comparator
+	ACSR |= (1 << ACI);   // Clear the analog comparator interrupt
+	ACSR |= (1 << ACIE);  // Enable the analog comparator interrupt
 }
 
 void set_timer(byte timer_value)
@@ -69,7 +69,7 @@ void mosfet_state (byte high_side, byte low_side)
 {
 	PORTD &= ~PORTD;
 	PORTB &= ~PORTB;
-	PORTD |= low_side;
+	PORTD |= (1 << low_side);
 	current_highside = high_side; // Used to tell which mosfet is switching
 }
 
@@ -82,8 +82,37 @@ void bemf_sensing(byte adc_pin, byte bemf_direction)
 	ACSR |= (1 << ACIE);
 }
 
+void soft_start_next_step()
+{
+	//Serial.print("current_phase = ");
+	//Serial.println(current_phase);
+	switch (current_phase)
+	{
+	case AH_BL:
+		mosfet_state(A_HIGH_PIN, B_LOW_PIN);
+		break;
+	case AH_CL:
+		mosfet_state(A_HIGH_PIN, C_LOW_PIN);
+		break;
+	case BH_CL:
+		mosfet_state(B_HIGH_PIN, C_LOW_PIN);
+		break;
+	case BH_AL:
+		mosfet_state(B_HIGH_PIN, A_LOW_PIN);
+		break;
+	case CH_AL:
+		mosfet_state(C_HIGH_PIN, A_LOW_PIN);
+		break;
+	case CH_BL:
+		mosfet_state(C_HIGH_PIN, B_LOW_PIN);
+		break;
+	}
+}
+
 void set_next_step()
 {
+	//Serial.print("current_phase = ");
+	//Serial.println(current_phase);
 	switch (current_phase)
 	{
 	case AH_BL:
