@@ -1,15 +1,16 @@
-#include <avr/interrupt.h>
-#include "./include/serial.h"
-
-int count = 0;
+//#include "./include/serial.h"
+#include <avr/io.h>
+#include <util/delay.h>
+#include "./include/functions.h"
 
 int main(void)
 {
-	uart_init(9600,0);
-
-    while (1)
-    {
-        debug_print(count, "Count == ");
-        count++;
+    DDRB |= (1 << DDB5);
+    while (1) {
+        PORTB |=  (1 << PB5);   // LED on
+        _delay_ms(500);
+        PORTB &= ~(1 << PB5);   // LED off
+        _delay_ms(500);
     }
+    return 0;
 }

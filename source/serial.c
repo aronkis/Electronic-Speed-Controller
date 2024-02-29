@@ -1,10 +1,11 @@
 
-#include "../include/serial.h"
 #include <stdio.h>
+#include <avr/interrupt.h>
+#include "../include/serial.h"
 
 volatile static char rx_buffer[RX_BUFFER_SIZE] = {0};
 volatile static uint16_t rx_count = 0;	
-volatile static char uart_tx_busy = 1;
+volatile static uint8_t uart_tx_busy = 1;
 
 ISR(USART_RX_vect){
 	
@@ -22,14 +23,9 @@ ISR(USART_TX_vect){
 	uart_tx_busy = 1;
 }
 
-void uart_init(uint32_t baud,uint8_t high_speed){
+void uart_init(uint32_t baud){
 	
 	uint8_t speed = 16;
-	
-	if(high_speed != 0){
-		speed = 8;
-		UCSR0A |= 1 << U2X0;
-	}
 	
 	baud = (F_CPU/(speed*baud)) - 1;
 	
