@@ -2,9 +2,11 @@
 #include <avr/io.h>
 
 volatile uint8_t currentHighside = 0;
-volatile uint8_t currentPhase = 0;
+volatile uint8_t nextPhase = 0;
 volatile uint8_t motorState = 0;
+volatile uint8_t zeroCrossPolarity = 0; // Q: move to register
 volatile uint16_t motorTurnOffCounter = 0;
+volatile uint16_t filteredTimeSinceCommutation = 0;
 
 void initPorts(void)
 {
@@ -14,11 +16,15 @@ void initPorts(void)
 
 void initTimers(void)
 {
+	// Timer 0 for PWM generation
+	TCCR0A = SET_BIT(WGM01);
+	TCCR0B = SET_BIT(WGM02) | SET_BIT(CS00);
+	OCR0A = PWM_TOP_VALUE;
+	CLEAR_INTERRUPT_FLAGS(TIFR0);
+	TIMSK0 &= CLEAR_BIT(TOIE0);
+
     // Timer1 for commutation timing
-    TCCR1A = SET_BIT(WGM10);
-    TCCR1B = SET_BIT(CS10);
-    TIMSK1 = SET_BIT(TOIE1) | SET_BIT(OCIE1A);
-    TIFR1  = SET_BIT(OCF1A);
+	TCCR1B = SET_BIT(CS11);
 
     // Timer2 for PWM measuring
     TCCR2A = 0;
@@ -29,14 +35,13 @@ void initTimers(void)
     PCICR  = SET_BIT(PCIE0);
     PCMSK0 = SET_BIT(PCINT0);
 
-    //TODO: TIMER0 for after commutation delay.
 }
 
 void initComparator(void)
 {
     ADCSRA &= CLEAR_BIT(ADEN);
     ADCSRB |= SET_BIT(ACME);
-    ACSR   |= SET_BIT(ACIE) | SET_BIT(ACI);
+    ACSR   |= SET_BIT(ACIE) | SET_BIT(ACI) | SET_BIT(ACIS1) | SET_BIT(ACIS0);
 }
 
 void mosfetState(uint8_t highSide, uint8_t lowSide)
@@ -56,7 +61,7 @@ void bemfSensing(uint8_t adcPin, uint8_t bemfDirection)
 
 void setNextStep(void)
 {
-    switch (currentPhase)
+    switch (nextPhase)
 	{
 	case AH_BL:
 		mosfetState(AH, BL);
@@ -88,43 +93,44 @@ void setNextStep(void)
 // TODO: fine tuning
 void startupDelay(uint16_t time)
 {
-  TIFR1 = TIFR1; // clear interrupts
-  do
-  {
-    TCNT1 = 0xffff - 100;
-    // Wait for timer to overflow.
-    while (!(TIFR1 & (1 << TOV1)))
-    {
-
-    }
-    TIFR1 = TIFR1;
-    time--;
-  } while (time);
+	CLEAR_INTERRUPT_FLAGS(TIFR1);
+	do
+	{
+		TCNT1 = UINT16_MAX - DELAY_MULTIPLIER;
+		// Wait for timer to overflow.
+		while (!(TIFR1 & (1 << TOV1)));
+		CLEAR_INTERRUPT_FLAGS(TIFR1);
+		time--;
+	} while (time);
 }
 
 void startMotor()
 {
-	unsigned char i;
+	uint8_t i;
 
 	SET_TIMER(PWM_START_VALUE);
-	currentPhase = 0;
-
+	nextPhase = 0;
 	setNextStep();
-
 	startupDelay(1000);
-
-	currentPhase++;
+	nextPhase++;
 
 	for (i = 0; i < START_UP_COMMS; i++)
 	{
 		setNextStep();
 		startupDelay(startupDelays[i]);
 
-		currentPhase++;
-		if (currentPhase >= 6)
-			currentPhase = 0;
+		CHECK_ZERO_CROSS_POLARITY;
+
+		nextPhase++;
+		if (nextPhase >= 6)
+			nextPhase = 0;
 	}
-	initComparator();
+
+	// Soft start done.
+	TCNT1 = 0;
+	SET_TIMER1_COMMUTATE_INT;
+
+	filteredTimeSinceCommutation = startupDelays[START_UP_COMMS - 1] * (START_UP_DELAY / 2);
 }
 
 void generateTables(void)

@@ -26,13 +26,24 @@
 #define CH_BL 5
 
 #define START_UP_COMMS 8
+#define START_UP_DELAY 10000
 #define PWM_START_VALUE 35
+#define PWM_TOP_VALUE 200
+#define DELAY_MULTIPLIER 200
+#define ZC_DETECTION_HOLDOFF_TIME (filteredTimeSinceCommutation / 2)
 
+
+#define CLEAR_INTERRUPT_FLAGS(reg) (reg = reg)
 #define SET_TIMER(timerValue) (OCR1A = timerValue)
 #define SET_BIT(bitPos) (1 << bitPos)
 #define CLEAR_BIT(bitPos) (~(1 << bitPos))
 #define CLEAR_BITS(bitPos1, bitPos2) (~(SET_BIT(bitPos1) | SET_BIT(bitPos2)))
 #define CLEAR_REGISTER(reg) (~reg)
+#define CHECK_ZERO_CROSS_POLARITY (zeroCrossPolarity = nextPhase & 0x01)
+#define SET_TIMER1_HOLDOFF_INT (TIMSK1 = SET_BIT(OCIE1B))
+#define SET_TIMER1_COMMUTATE_INT (TIMSK1 = SET_BIT(OCIE1A))
+#define DISABLE_ANALOG_COMPARATOR (ACSR &= CLEAR_BIT(ACIE))
+#define ENABLE_ANALOG_COMPARATOR (ACSR |= SET_BIT(ACIE))
 #define constrain(value, min, max) (value < min ? min : \
                                     value > max ? max : value)
 #define map(input, in_min, in_max, out_min, out_max) ( (input - in_min) * (out_max - out_min) \
@@ -40,8 +51,10 @@
 
 uint8_t startupDelays[START_UP_COMMS];
 extern volatile uint8_t currentHighside;
-extern volatile uint8_t currentPhase;
+extern volatile uint8_t nextPhase;
 extern volatile uint8_t motorState;
+extern volatile uint8_t zeroCrossPolarity;
+extern volatile uint16_t filteredTimeSinceCommutation;
 
 void initPorts(void);
 void initTimers(void);

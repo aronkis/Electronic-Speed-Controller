@@ -9,14 +9,13 @@ volatile uint8_t PWMAverageCount = 0;
 volatile uint8_t timerValue = 0;
 volatile uint32_t PWMInput = 0;
 
-
 ISR (ANALOG_COMP_vect)
 {
-    setNextStep();
-    currentPhase++;
-    if (currentPhase >= 6)
+    // Q: Filtering
+    nextPhase++;
+    if (nextPhase >= 6)
     {
-        currentPhase = 0;
+        nextPhase = 0;
     }
 }
 
@@ -54,8 +53,29 @@ ISR(TIMER2_OVF_vect)
 {
     timerOverflowCounter++;
 }
+//TODO: Verify interrupts
+ISR(TIMER1_COMPA_vect) // Commutate
+{
+    DISABLE_ANALOG_COMPARATOR;
+    setNextStep();
+    TCNT1 = 0;
+    CHECK_ZERO_CROSS_POLARITY;
 
-ISR(TIMER1_COMPA_vect)
+    CLEAR_INTERRUPT_FLAGS(TIFR1);
+    OCR1B = ZC_DETECTION_HOLDOFF_TIME;
+    SET_TIMER1_HOLDOFF_INT;
+}
+
+ISR(TIMER1_COMPB_vect) // Enable ZC Detection
+{
+    CLEAR_INTERRUPT_FLAGS(TIFR0);
+    CLEAR_INTERRUPT_FLAGS(TIFR1);
+    ENABLE_ANALOG_COMPARATOR;
+    TIMSK1 = 0;
+}
+
+// TODO: TIMER0 to PWM generator --- Check if TCNT0 > OCR0B?
+ISR(TIMER0_COMPB_vect)
 {
     if (lastTimerState)
     {

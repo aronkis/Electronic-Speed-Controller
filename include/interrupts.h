@@ -11,10 +11,13 @@
 
 extern volatile uint8_t motorState;
 
-ISR(ANALOG_COMP_vect);
-ISR(PCINT0_vect);
-ISR(TIMER2_OVF_vect);
-ISR(TIMER1_COMPA_vect);
+ISR(ANALOG_COMP_vect);  // Zero Crossing 
+ISR(PCINT0_vect);       // Measure PWM
+ISR(TIMER2_OVF_vect);   // PWM time measuring
+ISR(TIMER0_COMPB_vect); // Toggle PWM pin
+ISR(TIMER0_OVF_vect);   // Check Zero Crossing
+ISR(TIMER1_COMPA_vect); // Commutate
+ISR(TIMER1_COMPB_vect); // ZC detection enable
 ISR(TIMER1_OVF_vect);
 
 

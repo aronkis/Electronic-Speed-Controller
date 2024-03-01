@@ -3,11 +3,11 @@ OBJCOPY=avr-objcopy
 FLASHER=avrdude
 
 CFLAGS=-Os -DF_CPU=16000000UL -mmcu=atmega328p
-INCLUDES=source/*.c
+INCLUDES=src/*.c
 BUILD_PATH=build
 BUILD_NAME=main
 
-PORT=/dev/ttyUSB1
+PORT=/dev/ttyUSB0
 PARTNO=atmega328p
 BAUD=57600
 PROGRAMMER=arduino
