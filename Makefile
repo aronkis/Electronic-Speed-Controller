@@ -4,6 +4,8 @@ FLASHER=avrdude
 
 CFLAGS=-Os -DF_CPU=16000000UL -mmcu=atmega328p
 INCLUDES=source/*.c
+BUILD_PATH=build
+BUILD_NAME=main
 
 PORT=/dev/ttyUSB1
 PARTNO=atmega328p
@@ -13,17 +15,17 @@ PROGRAMMER=arduino
 all: build
 
 build: compile
-	${OBJCOPY} main.elf -O ihex main.hex
+	${OBJCOPY} ${BUILD_PATH}/${BUILD_NAME}.elf -O ihex ${BUILD_PATH}/${BUILD_NAME}.hex
 
 compile:
-	${CC} main.c ${INCLUDES} -o main.elf ${CFLAGS}
+	${CC} ${BUILD_NAME}.c ${INCLUDES} -o ${BUILD_PATH}/${BUILD_NAME}.elf ${CFLAGS}
 
 ison:
 	${FLASHER} -c ${PROGRAMMER} -p ${PARTNO} -P ${PORT} -b ${BAUD}
 
 flash: build 
-	${FLASHER} -c ${PROGRAMMER} -p ${PARTNO} -P ${PORT} -b ${BAUD} -U flash:w:main.hex:a
+	${FLASHER} -c ${PROGRAMMER} -p ${PARTNO} -P ${PORT} -b ${BAUD} -U flash:w:${BUILD_PATH}/${BUILD_NAME}.hex:a
 	@make clean
 
 clean:
-	@rm -rf *.hex *.elf
+	@rm ${BUILD_PATH}/*.hex ${BUILD_PATH}/*.elf

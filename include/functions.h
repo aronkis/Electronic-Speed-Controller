@@ -32,17 +32,26 @@
 #define SET_BIT(bitPos) (1 << bitPos)
 #define CLEAR_BIT(bitPos) (~(1 << bitPos))
 #define CLEAR_BITS(bitPos1, bitPos2) (~(SET_BIT(bitPos1) | SET_BIT(bitPos2)))
-#define CLEAR_PORT(port) (~port)
+#define CLEAR_REGISTER(reg) (~reg)
+#define constrain(value, min, max) (value < min ? min : \
+                                    value > max ? max : value)
+#define map(input, in_min, in_max, out_min, out_max) ( (input - in_min) * (out_max - out_min) \
+                                                      /(in_max - in_min) + out_min)
 
 uint8_t startupDelays[START_UP_COMMS];
+extern volatile uint8_t currentHighside;
+extern volatile uint8_t currentPhase;
+extern volatile uint8_t motorState;
 
 void initPorts(void);
 void initTimers(void);
 void initComparator(void);
+void startupDelay(uint16_t time);
 void mosfetState(uint8_t highSide, uint8_t lowSide);
 void bemfSensing(uint8_t adcPin, uint8_t bemfDirection);
 void setNextStep(void);
-void startDelay(uint8_t time);
 void startMotor(void);
+void generateTables(void);
+void runMotor(void);
 
 #endif
