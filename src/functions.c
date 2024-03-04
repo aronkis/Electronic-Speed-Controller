@@ -1,3 +1,4 @@
+#include "../include/serial.h"
 #include "../include/functions.h"
 #include <avr/io.h>
 
@@ -11,29 +12,32 @@ volatile uint16_t filteredTimeSinceCommutation = 0;
 void initPorts(void)
 {
     DDRD = SET_BIT(AL) | SET_BIT(BL) | SET_BIT(CL);
+	PORTD = 0x00;
     DDRB = SET_BIT(AH) | SET_BIT(BH) | SET_BIT(CH);
+	PORTB = 0x00;
 }
 
 void initTimers(void)
 {
 	// Timer 0 for PWM generation
-	TCCR0A = SET_BIT(WGM01);
-	TCCR0B = SET_BIT(WGM02) | SET_BIT(CS00);
+	TCCR0A = SET_BIT(WGM00);
+	TCCR0B = SET_BIT(WGM02) | SET_BIT(CS01);
 	OCR0A = PWM_TOP_VALUE;
 	CLEAR_INTERRUPT_FLAGS(TIFR0);
-	TIMSK0 &= CLEAR_BIT(TOIE0);
+	TIMSK0 = SET_BIT(OCIE0B);
+	TIFR0 = SET_BIT(OCF0B);
 
     // Timer1 for commutation timing
 	TCCR1B = SET_BIT(CS11);
 
     // Timer2 for PWM measuring
-    TCCR2A = 0;
-    TCCR2B = 0;
-    TIMSK2 = SET_BIT(TOIE2);
+    // TCCR2A = 0;
+    // TCCR2B = 0;
+    // TIMSK2 = SET_BIT(TOIE2);
 
-    // Enable interrupt on pin change
-    PCICR  = SET_BIT(PCIE0);
-    PCMSK0 = SET_BIT(PCINT0);
+    // // Enable interrupt on pin change
+    // PCICR  = SET_BIT(PCIE0);
+    // PCMSK0 = SET_BIT(PCINT0);
 
 }
 
@@ -41,7 +45,8 @@ void initComparator(void)
 {
     ADCSRA &= CLEAR_BIT(ADEN);
     ADCSRB |= SET_BIT(ACME);
-    ACSR   |= SET_BIT(ACIE) | SET_BIT(ACI) | SET_BIT(ACIS1) | SET_BIT(ACIS0);
+    //ACSR   |= SET_BIT(ACIE) | SET_BIT(ACI) | SET_BIT(ACIS1) | SET_BIT(ACIS0);
+	CLEAR_ANALOG_COMPARATOR_INTERRUPT;
 }
 
 void mosfetState(uint8_t highSide, uint8_t lowSide)
@@ -106,17 +111,21 @@ void startupDelay(uint16_t time)
 
 void startMotor()
 {
+    uart_send_string("STARTING_MOTOR\n\r");
+	
 	uint8_t i;
 
 	SET_TIMER(PWM_START_VALUE);
 	nextPhase = 0;
 	setNextStep();
+	debug_print(nextPhase, "Currently in phase: ");  
 	startupDelay(1000);
 	nextPhase++;
 
 	for (i = 0; i < START_UP_COMMS; i++)
 	{
 		setNextStep();
+		debug_print(nextPhase, "Currently in phase: ");  
 		startupDelay(startupDelays[i]);
 
 		CHECK_ZERO_CROSS_POLARITY;
@@ -131,6 +140,8 @@ void startMotor()
 	SET_TIMER1_COMMUTATE_INT;
 
 	filteredTimeSinceCommutation = startupDelays[START_UP_COMMS - 1] * (START_UP_DELAY / 2);
+    uart_send_string("MOTOR_STARTED\n\r");
+
 }
 
 void generateTables(void)

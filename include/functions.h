@@ -27,14 +27,13 @@
 
 #define START_UP_COMMS 8
 #define START_UP_DELAY 10000
-#define PWM_START_VALUE 35
+#define PWM_START_VALUE 55
 #define PWM_TOP_VALUE 200
 #define DELAY_MULTIPLIER 200
 #define ZC_DETECTION_HOLDOFF_TIME (filteredTimeSinceCommutation / 2)
 
-
 #define CLEAR_INTERRUPT_FLAGS(reg) (reg = reg)
-#define SET_TIMER(timerValue) (OCR1A = timerValue)
+#define SET_TIMER(timerValue) (OCR0B = timerValue)
 #define SET_BIT(bitPos) (1 << bitPos)
 #define CLEAR_BIT(bitPos) (~(1 << bitPos))
 #define CLEAR_BITS(bitPos1, bitPos2) (~(SET_BIT(bitPos1) | SET_BIT(bitPos2)))
@@ -44,6 +43,7 @@
 #define SET_TIMER1_COMMUTATE_INT (TIMSK1 = SET_BIT(OCIE1A))
 #define DISABLE_ANALOG_COMPARATOR (ACSR &= CLEAR_BIT(ACIE))
 #define ENABLE_ANALOG_COMPARATOR (ACSR |= SET_BIT(ACIE))
+#define CLEAR_ANALOG_COMPARATOR_INTERRUPT (ACSR |= SET_BIT(ACI))
 #define constrain(value, min, max) (value < min ? min : \
                                     value > max ? max : value)
 #define map(input, in_min, in_max, out_min, out_max) ( (input - in_min) * (out_max - out_min) \

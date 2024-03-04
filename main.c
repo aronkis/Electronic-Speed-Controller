@@ -1,26 +1,25 @@
-//#include "./include/serial.h"
 #include "./include/functions.h"
-#include <avr/io.h> 
-//#include "./include/interrupts.h"
+#include "./include/interrupts.h"
+#include "./include/serial.h"
+#include <util/delay.h>
 
 int main(void)
 {
-  //  initPorts();
-    //initTimers();
-    //initComparator();
-    //generateTables();
-	TCCR1B = SET_BIT(CS11);
-    
-    DDRB |= (1 << DDB5);
-    while (1) {
-        PORTB |=  (1 << PB5);   // LED on
-        startupDelay(START_UP_DELAY);
-        PORTB &= ~(1 << PB5);   // LED off
-        startupDelay(START_UP_DELAY);
+    uart_init(57600);
+    uart_send_string("STARTING\n\r");
+    initPorts();
+    uart_send_string("INIT_PORTS_DONE\n\r");
+    initTimers();
+    uart_send_string("INIT_TIMERS_DONE\n\r");
+    initComparator();
+    uart_send_string("INIT_COMPARATOR_DONE\n\r");
+    generateTables();
+    startMotor();
+
+    while (1)
+    {
+        SET_TIMER(PWM_START_VALUE);
     }
-    // while (1)
-    // {
-    //     runMotor();
-    // }
+
     return 0;
 }
