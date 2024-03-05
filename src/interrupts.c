@@ -1,15 +1,17 @@
 #include "../include/interrupts.h"
 #include "../include/functions.h"
+#include "../include/serial.h"
 
 volatile uint8_t lastPWMPinState = 0;
 volatile uint8_t lastTimerState = 0;
 
 volatile uint8_t timerOverflowCounter = 0;
 volatile uint8_t PWMAverageCount = 0;
+volatile uint8_t updateSpeed = FALSE;
 volatile uint8_t timerValue = 0;
 volatile uint32_t PWMInput = 0;
 
-// ISR(PCINT0_vect)
+// ISR(PCINTx_vect)
 // {
 //     if (!lastPWMPinState)
 //     {
@@ -48,23 +50,27 @@ volatile uint32_t PWMInput = 0;
 ISR (ANALOG_COMP_vect) // ZC detection
 {
     // Q: Filtering
+   // uart_send_string("ENTERED_ANALOG_COMP\n\r");
     uint16_t timeSinceCommutation = TCNT1;
     TCNT1 = COMMUTATION_CORRECTION;
     filteredTimeSinceCommutation = (COMMUTATION_TIMING_IIR_COEFF_A * timeSinceCommutation +
                                     COMMUTATION_TIMING_IIR_COEFF_B * filteredTimeSinceCommutation) /
                                     (COMMUTATION_TIMING_IIR_COEFF_A + COMMUTATION_TIMING_IIR_COEFF_B);
-    OCR1A = filteredTimeSinceCommutation;    
+    OCR1A = filteredTimeSinceCommutation; 
+
+    updateSpeed = TRUE; 
     
     TIMSK1 = SET_BIT(OCIE1A);
     CLEAR_INTERRUPT_FLAGS(TIFR1);
     DISABLE_ANALOG_COMPARATOR;
+    //uart_send_string("LEAVING_ANALOG_COMP\n\r");
 }
 
-//TODO: Verify interrupts
 ISR(TIMER1_COMPA_vect) // Commutate
 {
-    setNextStep();~
+    DRIVE_PORT = nextStep;
     TCNT1 = 0;
+
     CHECK_ZERO_CROSS_POLARITY;
 
     CLEAR_INTERRUPT_FLAGS(TIFR1);
@@ -79,29 +85,12 @@ ISR(TIMER1_COMPB_vect) // Enable ZC Detection
     ENABLE_ANALOG_COMPARATOR;
     TIMSK1 = 0;
 
+    bemfSensing(ComparatorPinTable[nextPhase], ComparatorEdgeTable[nextPhase]);
+
     nextPhase++;
     if (nextPhase >= 6)
     {
         nextPhase = 0;
     }
-}
-
-// TODO: TIMER0 to PWM generator --- Check if TCNT0 > OCR0B?
-ISR(TIMER0_COMPB_vect)
-{
-    if (lastTimerState)
-    {
-        PORTB &= CLEAR_REGISTER(PORTB);
-        lastTimerState = 0;
-    }
-    else
-    {
-        PORTB |= SET_BIT(currentHighside);
-        lastTimerState = 1;
-    }
-}
-
-ISR(TIMER0_OVF_vect)
-{
-    lastTimerState = 1;
+    nextStep = driveTable[nextPhase];
 }

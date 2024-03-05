@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define FALSE 0
+#define TRUE  (!FALSE)
+
 #define RISING  ((1 << ACIS0) | (1 << ACIS1))
 #define FALLING  (1 << ACIS1)
 
@@ -10,27 +13,32 @@
 #define ADC_PIN_C 1
 #define ADC_PIN_A 2
 
-#define AH PB3
-#define BH PB2
-#define CH PB1
+#define AH PB5
+#define BH PB4
+#define CH PB3
+#define AL PB2
+#define BL PB1
+#define CL PB0
 
-#define AL PD4
-#define BL PD3
-#define CL PD2
+#define PWM_PIN PB5
 
-#define AH_BL 0
-#define AH_CL 1
-#define BH_CL 2
-#define BH_AL 3
-#define CH_AL 4
-#define CH_BL 5
+#define AH_BL ((SET_BIT(AH)) | SET_BIT(BL))
+#define AH_CL ((SET_BIT(AH)) | SET_BIT(CL))
+#define BH_CL ((SET_BIT(BH)) | SET_BIT(CL))
+#define BH_AL ((SET_BIT(BH)) | SET_BIT(AL))
+#define CH_AL ((SET_BIT(CH)) | SET_BIT(AL))
+#define CH_BL ((SET_BIT(CH)) | SET_BIT(BL))
 
 #define START_UP_COMMS 8
+#define NUMBER_OF_STEPS 6
 #define START_UP_DELAY 10000
-#define PWM_START_VALUE 55
-#define PWM_TOP_VALUE 200
+#define PWM_START_VALUE 100
+#define PWM_TOP_VALUE 200 // TODO: Test different values... How to calculate this correctly?
 #define DELAY_MULTIPLIER 200
 #define ZC_DETECTION_HOLDOFF_TIME (filteredTimeSinceCommutation / 2)
+
+#define DRIVE_PORT PORTB
+#define DRIVE_REG  DDRB
 
 #define CLEAR_INTERRUPT_FLAGS(reg) (reg = reg)
 #define SET_TIMER(timerValue) (OCR0B = timerValue)
@@ -50,7 +58,12 @@
                                                       /(in_max - in_min) + out_min)
 
 uint8_t startupDelays[START_UP_COMMS];
+uint8_t driveTable[NUMBER_OF_STEPS];
+uint8_t ComparatorPinTable[NUMBER_OF_STEPS];
+uint8_t ComparatorEdgeTable[NUMBER_OF_STEPS];
+extern volatile uint8_t updateSpeed;
 extern volatile uint8_t currentHighside;
+extern volatile uint8_t nextStep;
 extern volatile uint8_t nextPhase;
 extern volatile uint8_t motorState;
 extern volatile uint8_t zeroCrossPolarity;
@@ -60,9 +73,7 @@ void initPorts(void);
 void initTimers(void);
 void initComparator(void);
 void startupDelay(uint16_t time);
-void mosfetState(uint8_t highSide, uint8_t lowSide);
 void bemfSensing(uint8_t adcPin, uint8_t bemfDirection);
-void setNextStep(void);
 void startMotor(void);
 void generateTables(void);
 void runMotor(void);
