@@ -2,6 +2,8 @@
 #include "../include/functions.h"
 #include <avr/io.h>
 
+#include <avr/interrupt.h>
+
 volatile uint8_t currentHighside = 0;
 volatile uint8_t nextStep  = 0;
 volatile uint8_t nextPhase = 0;
@@ -14,7 +16,7 @@ void initPorts(void)
 {
     DDRB = SET_BIT(AL) | SET_BIT(BL) | SET_BIT(CL) 
 		 | SET_BIT(AH) | SET_BIT(BH) | SET_BIT(CH);
-	PORTB = 0x00;
+	CLEAR_REGISTER(PORTB);
 
 	DDRD |= SET_BIT(PWM_PIN);
 }
@@ -26,10 +28,10 @@ void initTimers(void)
 	TCCR0B = SET_BIT(WGM02) | SET_BIT(CS00);
 	OCR0A  = PWM_TOP_VALUE;
 	CLEAR_INTERRUPT_FLAGS(TIFR0);
-	TIMSK0 &= CLEAR_BIT(TOIE0);
+	TIMSK0 = (0 << TOIE0);
 
     // Timer1 for commutation timing
-	TCCR1B = SET_BIT(CS11);
+	TCCR1B = SET_BIT(CS11) | (0 << CS10);
 
     // Timer2 for PWM measuring
     // TCCR2A = 0;
@@ -41,11 +43,12 @@ void initTimers(void)
     // PCMSK0 = SET_BIT(PCINTx);
 }
 
+// TODO: Make it usefull only above 8k RPM
 void initComparator(void)
 {
     ADCSRA &= CLEAR_BIT(ADEN);
     ADCSRB  = SET_BIT(ACME);
-    ACSR    = SET_BIT(ACIE) | SET_BIT(ACI) | SET_BIT(ACIS1) | SET_BIT(ACIS0);
+    ACSR    = (0 << ACBG) | SET_BIT(ACIE) | SET_BIT(ACI) | SET_BIT(ACIS1) | SET_BIT(ACIS0);
 }
 
 void bemfSensing(uint8_t adcPin, uint8_t bemfDirection)
@@ -78,19 +81,19 @@ void startMotor()
 	nextPhase = 0;
 	debug_print(nextPhase, "CURRENTLY_IN_PHASE: ");
 	DRIVE_PORT = driveTable[nextPhase];
-	startupDelay(START_UP_DELAY);
+	startupDelay(START_UP_DELAY * 2);
 
-	nextPhase++;
+	nextPhase = 1;
 	nextStep = driveTable[nextPhase];
 
 	for (i = 0; i < START_UP_COMMS; i++)
 	{
 		debug_print(nextPhase, "CURRENTLY_IN_PHASE: ");
 		DRIVE_PORT = nextStep;
-		startupDelay(startupDelays[i]);
+		startupDelay(startupDelays[i] * 2);
 
-		bemfSensing(ComparatorPinTable[nextPhase], ComparatorEdgeTable[nextPhase]);
-		
+	    bemfSensing(ComparatorPinTable[nextPhase], ComparatorEdgeTable[nextPhase]);
+
 		CHECK_ZERO_CROSS_POLARITY;
 
 		nextPhase++;
@@ -101,12 +104,14 @@ void startMotor()
 		nextStep = driveTable[nextPhase];
 	}
 
+
 	// Soft start done.
 	TCNT1 = 0;
 	SET_TIMER1_COMMUTATE_INT;
-
-	filteredTimeSinceCommutation = startupDelays[START_UP_COMMS - 1] * (START_UP_DELAY / 2);
-
+	// CLEAR_INTERRUPT_FLAGS(TIFR1);
+    // OCR1B = ZC_DETECTION_HOLDOFF_TIME;
+    // SET_TIMER1_HOLDOFF_INT;
+	filteredTimeSinceCommutation = startupDelays[START_UP_COMMS - 1] * (START_UP_DELAY / 2) * 2; // too fast?
 }
 
 void generateTables(void)
@@ -126,22 +131,23 @@ void generateTables(void)
 	ComparatorEdgeTable[4] = RISING;
 	ComparatorEdgeTable[5] = FALLING;
 
+/*
 	ComparatorPinTable[0] = ADC_PIN_C;
 	ComparatorPinTable[1] = ADC_PIN_B;
 	ComparatorPinTable[2] = ADC_PIN_A;
 	ComparatorPinTable[3] = ADC_PIN_C;
 	ComparatorPinTable[4] = ADC_PIN_B;
 	ComparatorPinTable[5] = ADC_PIN_A;
-
+*/
 	// For startup
 	startupDelays[0] = 200;
-	startupDelays[1] = 150;
-	startupDelays[2] = 100;
-	startupDelays[3] = 80;
-	startupDelays[4] = 70;
-	startupDelays[5] = 65;
-	startupDelays[6] = 60;
-	startupDelays[7] = 55;
+  	startupDelays[1] = 150;
+  	startupDelays[2] = 100;
+  	startupDelays[3] = 80;
+  	startupDelays[4] = 70;
+  	startupDelays[5] = 65;
+  	startupDelays[6] = 60;
+  	startupDelays[7] = 55;
 }
 
 void runMotor(void)

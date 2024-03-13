@@ -50,20 +50,19 @@ volatile uint32_t PWMInput = 0;
 ISR (ANALOG_COMP_vect) // ZC detection
 {
     // Q: Filtering
-   // uart_send_string("ENTERED_ANALOG_COMP\n\r");
     uint16_t timeSinceCommutation = TCNT1;
     TCNT1 = COMMUTATION_CORRECTION;
     filteredTimeSinceCommutation = (COMMUTATION_TIMING_IIR_COEFF_A * timeSinceCommutation +
                                     COMMUTATION_TIMING_IIR_COEFF_B * filteredTimeSinceCommutation) /
-                                    (COMMUTATION_TIMING_IIR_COEFF_A + COMMUTATION_TIMING_IIR_COEFF_B);
+                                    (COMMUTATION_TIMING_IIR_COEFF_A + COMMUTATION_TIMING_IIR_COEFF_B) * 2; // too fast? 2x more?
     OCR1A = filteredTimeSinceCommutation; 
 
     updateSpeed = TRUE; 
     
     TIMSK1 = SET_BIT(OCIE1A);
     CLEAR_INTERRUPT_FLAGS(TIFR1);
+    CLEAR_ANALOG_COMPARATOR_INTERRUPT;
     DISABLE_ANALOG_COMPARATOR;
-    //uart_send_string("LEAVING_ANALOG_COMP\n\r");
 }
 
 ISR(TIMER1_COMPA_vect) // Commutate
@@ -84,9 +83,7 @@ ISR(TIMER1_COMPB_vect) // Enable ZC Detection
     CLEAR_INTERRUPT_FLAGS(TIFR1);
     ENABLE_ANALOG_COMPARATOR;
     TIMSK1 = 0;
-
     bemfSensing(ComparatorPinTable[nextPhase], ComparatorEdgeTable[nextPhase]);
-
     nextPhase++;
     if (nextPhase >= 6)
     {
