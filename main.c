@@ -11,30 +11,35 @@
 #include "./include/functions.h"
 #include "./include/serial.h"
 
-
+//TODO: Implement Closed Loop
 
 int main(void)
 {
     uart_init(57600);
     uart_send_string("STARTING\n\r");
+    sei();
     #ifdef NORMAL_RUN
         initPorts();
-        //uart_send_string("INIT_PORTS_DONE\n\r");
+        uart_send_string("INIT_PORTS_DONE\n\r");
         initTimers();
-        //uart_send_string("INIT_TIMERS_DONE\n\r");
+        uart_send_string("INIT_TIMERS_DONE\n\r");
+        #ifdef ADC_MEASURE
+            initADC();
+            uart_send_string("INIT_ADC_DONE\n\r");
+        #endif
         initComparator();
-        //uart_send_string("INIT_COMPARATOR_DONE\n\r");
+        uart_send_string("INIT_COMPARATOR_DONE\n\r");
         generateTables();
-        //uart_send_string("TABELES_GENERATED\n\r");
-        startupDelay(1000);
+        uart_send_string("TABELES_GENERATED\n\r");
         startMotor();
-        uart_send_string("MOTOR_STARTED\n\r");
-        sei();
+       // enableWatchdogTimer();
+       // sei();
         while (1)
         {
-            if (updateSpeed)
+            if(updateSpeed)
             {
-                SET_TIMER(PWM_START_VALUE);
+                //debug_print(nextPhase, "nextPhase = ");
+                updateSpeed = FALSE;
             }
         }
     #endif

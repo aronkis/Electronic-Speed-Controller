@@ -2,6 +2,8 @@
 #include "../include/functions.h"
 #include "../include/serial.h"
 
+//#include <avr/wdt.h>
+
 volatile uint8_t lastPWMPinState = 0;
 volatile uint8_t lastTimerState = 0;
 
@@ -32,7 +34,6 @@ volatile uint32_t PWMInput = 0;
 //             timerValue = map(PWMInput, PWM_IN_MIN, PWM_IN_MAX, \
 //                                        PWM_MIN_VALUE, PWM_MAX_VALUE);
 //             SET_TIMER(timerValue);
-
 //             PWMAverageCount = 0;
 //             PWMInput = 0;
 //         }
@@ -47,22 +48,34 @@ volatile uint32_t PWMInput = 0;
 //     timerOverflowCounter++;
 // }
 
-ISR (ANALOG_COMP_vect) // ZC detection
+ISR (TIMER0_OVF_vect) // ZC detection
 {
-    // Q: Filtering
-    uint16_t timeSinceCommutation = TCNT1;
-    TCNT1 = COMMUTATION_CORRECTION;
-    filteredTimeSinceCommutation = (COMMUTATION_TIMING_IIR_COEFF_A * timeSinceCommutation +
-                                    COMMUTATION_TIMING_IIR_COEFF_B * filteredTimeSinceCommutation) /
-                                    (COMMUTATION_TIMING_IIR_COEFF_A + COMMUTATION_TIMING_IIR_COEFF_B) * 2; // too fast? 2x more?
-    OCR1A = filteredTimeSinceCommutation; 
+    uint8_t adcValue;
 
-    updateSpeed = TRUE; 
-    
-    TIMSK1 = SET_BIT(OCIE1A);
-    CLEAR_INTERRUPT_FLAGS(TIFR1);
-    CLEAR_ANALOG_COMPARATOR_INTERRUPT;
-    DISABLE_ANALOG_COMPARATOR;
+    ADCSRA &= CLEAR_BITS(ADATE, ADIE);
+
+    while (!(ADCSRA & (1 << ADIF)));
+
+    adcValue = ADCH;
+
+    if (((zeroCrossPolarity == RISING) && (adcValue > ZC_DETECTION_THRESHOLD)) || 
+        ((zeroCrossPolarity == FALLING) && (adcValue < ZC_DETECTION_THRESHOLD)))
+    {
+        uint16_t timeSinceCommutation = TCNT1;
+        TCNT1 = COMMUTATION_CORRECTION; //time related page125 of datesheet!!
+
+        filteredTimeSinceCommutation = ((COMMUTATION_TIMING_IIR_COEFF_A * timeSinceCommutation +
+                                        COMMUTATION_TIMING_IIR_COEFF_B * filteredTimeSinceCommutation) /
+                                        (COMMUTATION_TIMING_IIR_COEFF_A + COMMUTATION_TIMING_IIR_COEFF_B)) / 2; // time related
+        OCR1A = filteredTimeSinceCommutation; 
+
+        updateSpeed = TRUE; 
+        SET_COMPB_TRIGGER_VALUE(PWM_START_VALUE);
+
+        SET_TIMER1_COMMUTATE_INT;
+        CLEAR_INTERRUPT_FLAGS(TIFR1);
+        DISABLE_ALL_TIMER0_INTS;
+    }
 }
 
 ISR(TIMER1_COMPA_vect) // Commutate
@@ -75,15 +88,24 @@ ISR(TIMER1_COMPA_vect) // Commutate
     CLEAR_INTERRUPT_FLAGS(TIFR1);
     OCR1B = ZC_DETECTION_HOLDOFF_TIME;
     SET_TIMER1_HOLDOFF_INT;
+
+    //wdt_reset();
 }
 
 ISR(TIMER1_COMPB_vect) // Enable ZC Detection
 {
     CLEAR_INTERRUPT_FLAGS(TIFR0);
     CLEAR_INTERRUPT_FLAGS(TIFR1);
-    ENABLE_ANALOG_COMPARATOR;
-    TIMSK1 = 0;
-    bemfSensing(ComparatorPinTable[nextPhase], ComparatorEdgeTable[nextPhase]);
+    SET_TIMER0_ZC_DETECTION_INT;
+    DISABLE_ALL_TIMER1_INTS;
+
+    ADMUX = ADMUXTable[nextPhase];
+
+    while (!(ADCSRA & (1 << ADIF)));
+
+    ADCSRA &= CLEAR_BIT(ADIE);
+    ADCSRA |= SET_BIT(ADSC) | SET_BIT(ADATE);
+
     nextPhase++;
     if (nextPhase >= 6)
     {
@@ -91,3 +113,9 @@ ISR(TIMER1_COMPB_vect) // Enable ZC Detection
     }
     nextStep = driveTable[nextPhase];
 }
+
+// ISR(WDT_vect)
+// {
+//     CLEAR_REGISTER(DRIVE_PORT);
+//     while(1);
+// }
