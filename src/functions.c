@@ -120,7 +120,6 @@ void startMotor()
 			i = 15;
 			j++;
 			if (j == 100){
-				SET_COMPB_TRIGGER_VALUE(32);
 				j = 0;
 			}
 		}
@@ -130,6 +129,7 @@ void startMotor()
 	TCNT1 = 0;
 	SET_TIMER1_COMMUTATE_INT;
 	filteredTimeSinceCommutation = startupDelays[START_UP_COMMS - 1] * (START_UP_DELAY / 2) / 2; //time related
+	uart_send_string("AFTER START FUNCTION\n\r");
 }
 
 void generateTables(void)
@@ -165,17 +165,17 @@ void generateTables(void)
   	startupDelays[12] = 30;
   	startupDelays[13] = 30;
   	startupDelays[14] = 30;
-  	startupDelays[15] = 1;
-  	startupDelays[16] = 1;
-  	startupDelays[17] = 1;
-  	startupDelays[18] = 1;
-  	startupDelays[19] = 1;
-  	startupDelays[20] = 1;
-  	startupDelays[21] = 1;
-  	startupDelays[22] = 1;
-  	startupDelays[23] = 1;
-  	startupDelays[24] = 1;
-  	startupDelays[25] = 1;
+  	startupDelays[15] = 30;
+  	startupDelays[16] = 30;
+  	startupDelays[17] = 30;
+  	startupDelays[18] = 30;
+  	startupDelays[19] = 30;
+  	startupDelays[20] = 30;
+  	startupDelays[21] = 30;
+  	startupDelays[22] = 30;
+  	startupDelays[23] = 30;
+  	startupDelays[24] = 30;
+  	startupDelays[25] = 30;
 }
 
 void runMotor(void)

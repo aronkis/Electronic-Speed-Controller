@@ -50,17 +50,22 @@ volatile uint32_t PWMInput = 0;
 
 ISR (TIMER0_OVF_vect) // ZC detection
 {
+    uart_init(57600);
     uint8_t adcValue;
 
-    ADCSRA &= CLEAR_BITS(ADATE, ADIE);
+    ADCSRA &= ~((1 << ADATE) | (1 << ADIE));
+    debug_print(zeroCrossPolarity, "BEFORE WHILE\n\r");
 
     while (!(ADCSRA & (1 << ADIF)));
+    debug_print(zeroCrossPolarity, "AFTER WHILE\n\r");
+
 
     adcValue = ADCH;
 
     if (((zeroCrossPolarity == RISING) && (adcValue > ZC_DETECTION_THRESHOLD)) || 
         ((zeroCrossPolarity == FALLING) && (adcValue < ZC_DETECTION_THRESHOLD)))
     {
+        //debug_print(zeroCrossPolarity, "IN ADC\n\r");
         uint16_t timeSinceCommutation = TCNT1;
         TCNT1 = COMMUTATION_CORRECTION; //time related page125 of datesheet!!
 
@@ -80,6 +85,9 @@ ISR (TIMER0_OVF_vect) // ZC detection
 
 ISR(TIMER1_COMPA_vect) // Commutate
 {
+    uart_init(57600);
+
+    uart_send_string("TIMER1_COMPA\n\r");
     DRIVE_PORT = nextStep;
     TCNT1 = 0;
 
@@ -94,14 +102,18 @@ ISR(TIMER1_COMPA_vect) // Commutate
 
 ISR(TIMER1_COMPB_vect) // Enable ZC Detection
 {
+    uart_init(57600);
+    uart_send_string("TIMER1_COMPB\n\r");
     CLEAR_INTERRUPT_FLAGS(TIFR0);
     CLEAR_INTERRUPT_FLAGS(TIFR1);
     SET_TIMER0_ZC_DETECTION_INT;
     DISABLE_ALL_TIMER1_INTS;
 
     ADMUX = ADMUXTable[nextPhase];
+    uart_send_string("BEFORE WHILE CB\n\r");
 
     while (!(ADCSRA & (1 << ADIF)));
+    uart_send_string("AFTER WHILE CB\n\r");
 
     ADCSRA &= CLEAR_BIT(ADIE);
     ADCSRA |= SET_BIT(ADSC) | SET_BIT(ADATE);

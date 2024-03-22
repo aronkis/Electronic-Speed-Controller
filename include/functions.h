@@ -10,7 +10,7 @@
 #define PWM_MIN_VALUE   22
 #define PWM_START_VALUE 32
 #define PWM_MAX_VALUE   50
-#define DELAY_MULTIPLIER 5
+#define DELAY_MULTIPLIER 100
 
 #define FALSE 0
 #define TRUE  (!FALSE)
@@ -40,7 +40,7 @@ if VREF = 5000;  ZC_DETECTION_THRESHOLD = VIN * 255 / VREF;
     ZC_DETECTION_THRESHOLD = 71
 */
 // TODO: Connect the VREF before testing!
-#define ZC_DETECTION_THRESHOLD 71 
+#define ZC_DETECTION_THRESHOLD 54
 #define ADC_PIN_B 0x00
 #define ADC_PIN_C 0x01
 #define ADC_PIN_A 0x02

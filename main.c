@@ -32,14 +32,19 @@ int main(void)
         generateTables();
         uart_send_string("TABELES_GENERATED\n\r");
         startMotor();
+        uart_send_string("MOTOR_STARTED\n\r");
        // enableWatchdogTimer();
        // sei();
         while (1)
         {
             if(updateSpeed)
             {
-                //debug_print(nextPhase, "nextPhase = ");
+                uart_send_string("Speed updated\n\r");
                 updateSpeed = FALSE;
+            }
+            else
+            {
+            uart_send_string("Speed not updated\n\r");
             }
         }
     #endif
